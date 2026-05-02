@@ -1189,6 +1189,25 @@ var S = {
 var GAS_API = 'https://script.google.com/macros/s/AKfycbyvrQn4MX-Njz2HITaWAsddhHRdQA7zmw57F0PQe9WbvtlZFP1SA3FPYSqw5REfyuu-/exec';
 var CACHE_KEY = 'ramuse_v1';
 
+// JSONP helper — bypasses CORS on GAS exec URLs
+var _jsonpSeq = 0;
+function gasJsonp(url, onSuccess, onError) {
+  var cbName = '_gjp' + (++_jsonpSeq) + '_' + Date.now();
+  var script = document.createElement('script');
+  var timer = setTimeout(function() {
+    cleanup(); if (onError) onError(new Error('timeout'));
+  }, 20000);
+  function cleanup() {
+    clearTimeout(timer);
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+  }
+  window[cbName] = function(data) { cleanup(); onSuccess(data); };
+  script.onerror = function() { cleanup(); if (onError) onError(new Error('script error')); };
+  script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+  document.head.appendChild(script);
+}
+
 window.onload = function() {
   // ① キャッシュがあれば即座に描画（初回以外はここで表示完了）
   try {
@@ -1209,25 +1228,22 @@ window.onload = function() {
     }
   }, 20000);
 
-  fetch(GAS_API+'?action=init')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      loadDone = true; clearTimeout(loadTimer);
-      if(data.families&&data.families.length) S.fams=data.families;
-      S.contests = data.contests || [];
-      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
-      try { renderContests(); } catch(e) { var el=document.getElementById('clist'); if(el) el.innerHTML='<div class="empty"><p>表示エラー: '+esc(String(e))+'</p></div>'; }
-      try { renderProgress(); } catch(e) {}
-      try { renderFinance(); } catch(e) {}
-      try { renderResults(); } catch(e) {}
-      try { renderTodayBanner(S.contests); } catch(e) {}
-      try { renderHome(); } catch(e) {}
-    })
-    .catch(function(e) {
-      loadDone = true; clearTimeout(loadTimer);
-      var el = document.getElementById('clist');
-      if (el) el.innerHTML = '<div class="empty"><p style="margin-bottom:12px">読み込み失敗:<br><span style="font-size:12px;color:var(--MU)">'+esc(String(e))+'</span></p><button onclick="location.reload()" style="padding:10px 20px;border-radius:999px;background:var(--Y);color:#fff;font-size:14px;font-weight:700;border:none">再読み込み</button></div>';
-    });
+  gasJsonp(GAS_API+'?action=init', function(data) {
+    loadDone = true; clearTimeout(loadTimer);
+    if(data.families&&data.families.length) S.fams=data.families;
+    S.contests = data.contests || [];
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
+    try { renderContests(); } catch(e) { var el=document.getElementById('clist'); if(el) el.innerHTML='<div class="empty"><p>表示エラー: '+esc(String(e))+'</p></div>'; }
+    try { renderProgress(); } catch(e) {}
+    try { renderFinance(); } catch(e) {}
+    try { renderResults(); } catch(e) {}
+    try { renderTodayBanner(S.contests); } catch(e) {}
+    try { renderHome(); } catch(e) {}
+  }, function(e) {
+    loadDone = true; clearTimeout(loadTimer);
+    var el = document.getElementById('clist');
+    if (el) el.innerHTML = '<div class="empty"><p style="margin-bottom:12px">読み込み失敗:<br><span style="font-size:12px;color:var(--MU)">'+esc(String(e))+'</span></p><button onclick="location.reload()" style="padding:10px 20px;border-radius:999px;background:var(--Y);color:#fff;font-size:14px;font-weight:700;border:none">再読み込み</button></div>';
+  });
 
   // ③ アイコン生成（後回し、データ取得と競合しない）
   setTimeout(function() {
@@ -1245,22 +1261,19 @@ window.onload = function() {
 };
 
 function loadAll(quiet) {
-  fetch(GAS_API+'?action=init')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if(data.families&&data.families.length) S.fams=data.families;
-      S.contests = data.contests || [];
-      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
-      renderContests(); renderProgress(); renderResults(); try{renderHome();}catch(e){}
-      try { renderTodayBanner(S.contests); } catch(e) {}
-      if (quiet) showToast('更新しました');
-    })
-    .catch(function(e) {
-      if (!quiet) {
-        var el = document.getElementById('clist');
-        if (el) el.innerHTML = '<div class="empty"><p>読み込み失敗: ' + esc(String(e)) + '</p></div>';
-      }
-    });
+  gasJsonp(GAS_API+'?action=init', function(data) {
+    if(data.families&&data.families.length) S.fams=data.families;
+    S.contests = data.contests || [];
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
+    renderContests(); renderProgress(); renderResults(); try{renderHome();}catch(e){}
+    try { renderTodayBanner(S.contests); } catch(e) {}
+    if (quiet) showToast('更新しました');
+  }, function(e) {
+    if (!quiet) {
+      var el = document.getElementById('clist');
+      if (el) el.innerHTML = '<div class="empty"><p>読み込み失敗: ' + esc(String(e)) + '</p></div>';
+    }
+  });
 }
 
 // ============================================================
@@ -1429,14 +1442,11 @@ function renderHome() {
   // 未取得なら取得開始
   if(S.weekEvents===null){
     S.weekEvents=[];
-    fetch(GAS_API+'?action=week')
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        if(Array.isArray(data)) S.weekEvents=data;
-        else S.weekEvents=[];
-        if(S.page==='home') renderHome();
-      })
-      .catch(function(){ S.weekEvents=[]; if(S.page==='home') renderHome(); });
+    gasJsonp(GAS_API+'?action=week', function(data){
+      if(Array.isArray(data)) S.weekEvents=data;
+      else S.weekEvents=[];
+      if(S.page==='home') renderHome();
+    }, function(){ S.weekEvents=[]; if(S.page==='home') renderHome(); });
   }
 }
 
@@ -1465,17 +1475,14 @@ function loadCalendarMonth(year, month) {
   var key=year+'-'+month;
   var grid=document.getElementById('cal-grid');
   if(grid) grid.innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--MU);font-size:13px">読み込み中...</div>';
-  fetch(GAS_API+'?action=calendar&year='+year+'&month='+month)
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data&&data.error){ S.calEvents[key]=[]; }
-      else { S.calEvents[key]=Array.isArray(data)?data:[]; }
-      if(S.calYear===year&&S.calMonth===month) renderCalendarGrid();
-    })
-    .catch(function(){
-      S.calEvents[key]=[];
-      if(S.calYear===year&&S.calMonth===month) renderCalendarGrid();
-    });
+  gasJsonp(GAS_API+'?action=calendar&year='+year+'&month='+month, function(data){
+    if(data&&data.error){ S.calEvents[key]=[]; }
+    else { S.calEvents[key]=Array.isArray(data)?data:[]; }
+    if(S.calYear===year&&S.calMonth===month) renderCalendarGrid();
+  }, function(){
+    S.calEvents[key]=[];
+    if(S.calYear===year&&S.calMonth===month) renderCalendarGrid();
+  });
 }
 
 function renderCalendarGrid() {
