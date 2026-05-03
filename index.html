@@ -8,7 +8,8 @@
 <meta name="apple-mobile-web-app-title" content="RAMUSE">
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
-<link rel="apple-touch-icon" id="apple-icon">
+<link rel="apple-touch-icon" href="icon-512.png" media="(prefers-color-scheme: light)">
+<link rel="apple-touch-icon" href="icon-512-dark.png" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <title>RAMUSE</title>
 <style>
@@ -1245,19 +1246,6 @@ window.onload = function() {
     if (el) el.innerHTML = '<div class="empty"><p style="margin-bottom:12px">読み込み失敗:<br><span style="font-size:12px;color:var(--MU)">'+esc(String(e))+'</span></p><button onclick="location.reload()" style="padding:10px 20px;border-radius:999px;background:var(--Y);color:#fff;font-size:14px;font-weight:700;border:none">再読み込み</button></div>';
   });
 
-  // ③ アイコン生成（後回し、データ取得と競合しない）
-  setTimeout(function() {
-    try {
-      var cv = document.createElement('canvas'); cv.width = cv.height = 512;
-      var cx = cv.getContext('2d');
-      cx.fillStyle = '#F2F2F7'; cx.fillRect(0, 0, 512, 512);
-      cx.fillStyle = '#1C1C1E'; cx.font = 'italic 700 130px serif';
-      cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      cx.fillText('RAMUSÉ', 256, 256);
-      var lk = document.getElementById('apple-icon');
-      if (lk) lk.href = cv.toDataURL('image/png');
-    } catch(e) {}
-  }, 200);
 };
 
 function loadAll(quiet) {
