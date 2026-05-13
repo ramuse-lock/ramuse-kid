@@ -2345,8 +2345,9 @@ function buildViewContent(c) {
   }
   var adultP0=parseInt(c['観覧費_大人_単価'])||0;
   var childP0=parseInt(c['観覧費_子供_単価'])||0;
+  var kanranMeth=c['観覧費_支払方法']||'';
   var hasKanran=S.fams.some(function(f){ return (parseInt(c[f+'_観覧費_大人'])||0)+(parseInt(c[f+'_観覧費_子供'])||0)>0; });
-  if(hasKanran&&(adultP0>0||childP0>0)) {
+  if(hasKanran&&(adultP0>0||childP0>0)&&kanranMeth==='当日支払い') {
     var kanSubs=[];
     S.fams.forEach(function(fam){
       var ad=parseInt(c[fam+'_観覧費_大人'])||0, ch=parseInt(c[fam+'_観覧費_子供'])||0;
