@@ -13,11 +13,35 @@ function getSpreadsheet() {
   return _ssCache;
 }
 
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('RAMUSE')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+function doGet(e) {
+  // 子供用アプリはGitHub aPagesに移行済み。このGASはAPIのみ提供する。
+  return serveApi(e);
+}
+
+function serveApi(e) {
+  var action = (e && e.parameter && e.parameter.action) || 'init';
+  var cb = (e && e.parameter && e.parameter.callback) || '';
+  var result;
+  try {
+    if (action === 'init') {
+      result = { families: FAMILY_NAMES, contests: getContests() };
+    } else if (action === 'calendar') {
+      result = getCalendarEvents(parseInt(e.parameter.year), parseInt(e.parameter.month));
+    } else if (action === 'week') {
+      result = getThisWeekEvents();
+    } else {
+      result = { error: 'Unknown action: ' + action };
+    }
+  } catch(err) {
+    result = { error: err.toString() };
+  }
+  var json = JSON.stringify(result);
+  if (cb) {
+    return ContentService.createTextOutput(cb + '(' + json + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function getFamilyNames() {
