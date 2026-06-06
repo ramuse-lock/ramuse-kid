@@ -25,6 +25,7 @@
   --s-waitpay-t:#5A3D00;--s-waitpay-bg:rgba(160,108,0,0.12);
   --s-done-t:#FFFFFF;--s-done-bg:#2C2C2E;
   --s-cancel-t:#8E8E93;--s-cancel-bg:rgba(142,142,147,0.10);
+  --s-dayof-t:#1A5FA8;--s-dayof-bg:rgba(0,122,255,0.11);
   /* Semantic */
   --OK:#34C759;--NG:#FF3B30;--WN:#FF9500;
   --OK-t:#1A6630;--NG-t:#B00000;--WN-t:#7A4200;
@@ -45,6 +46,7 @@
     --s-waitpay-t:#C8A050;--s-waitpay-bg:rgba(150,100,0,0.18);
     --s-done-t:#000000;--s-done-bg:#EBEBF5;
     --s-cancel-t:#636366;--s-cancel-bg:rgba(99,99,102,0.12);
+    --s-dayof-t:#6E99FF;--s-dayof-bg:rgba(0,122,255,0.15);
     --OK-t:#30D158;--NG-t:#FF453A;--WN-t:#FF9F0A;
     --OK-bg:rgba(48,209,88,0.14);--NG-bg:rgba(255,69,58,0.14);--WN-bg:rgba(255,159,10,0.14);
     --SH:0 1px 0 rgba(0,0,0,0.22),0 2px 8px rgba(0,0,0,0.18);
@@ -313,6 +315,7 @@ button{cursor:pointer;border:none;background:none}
 .b-entry{background:var(--s-entry-bg);color:var(--s-entry-t)}
 .b-ready{background:var(--s-ready-bg);color:var(--s-ready-t)}
 .b-waitpay{background:var(--s-waitpay-bg);color:var(--s-waitpay-t)}
+.b-dayof{background:var(--s-dayof-bg);color:var(--s-dayof-t)}
 .b-done{background:var(--s-done-bg);color:var(--s-done-t)}
 .b-cancel{background:var(--s-cancel-bg);color:var(--s-cancel-t)}
 .b-def{background:var(--s-ready-bg);color:var(--s-ready-t)}
@@ -371,11 +374,14 @@ button{cursor:pointer;border:none;background:none}
 .yr-bar{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;scrollbar-width:none}
 .yr-bar::-webkit-scrollbar{display:none}
 .rc{background:var(--SFC);border-radius:var(--R);padding:16px;margin-bottom:10px;box-shadow:var(--SHM);border:1px solid var(--BD)}
-.rc-h{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
-.rc-name{font-size:15px;font-weight:700}
-.rc-date{font-size:12px;color:var(--MU)}
-.rc-div{font-size:12px;color:var(--MU);margin-bottom:5px}
-.rc-res{font-size:14px;white-space:pre-wrap;color:var(--TX)}
+.rc-date{font-size:12px;font-weight:600;color:var(--MU);margin-bottom:4px;letter-spacing:.02em}
+.rc-name{font-size:15px;font-weight:700;margin-bottom:3px}
+.rc-div{font-size:12px;color:var(--MU);margin-bottom:8px}
+.rc-res{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;padding:5px 10px;border-radius:999px}
+.rc-res.award{background:#FFF7DB;color:#8A6200;border:1.5px solid #F0C040}
+.rc-res.special{background:#F3EEFF;color:#6B2FA0;border:1.5px solid #C59EE8}
+.rc-res.qualify{background:#E6F3FF;color:#1A5FA8;border:1.5px solid #7BBCF0}
+.rc-res.plain{font-size:13px;color:var(--MU);font-weight:500;padding:0}
 .rc-empty{font-size:13px;color:var(--MU);font-style:italic}
 
 /* ===== Detail Overlay ===== */
@@ -641,6 +647,7 @@ button{cursor:pointer;border:none;background:none}
           <option value="all">すべて</option>
           <option value="エントリー予定">エントリー予定</option>
           <option value="準備中">準備中</option>
+          <option value="当日待ち">当日待ち</option>
           <option value="会計待ち">会計待ち</option>
           <option value="完了">完了</option>
         </select>
@@ -1660,29 +1667,41 @@ function calcAutoStatus(c) {
   if(c['ステータス']==='キャンセル') return 'キャンセル';
   // 1. エントリー未完了
   if(!c['エントリー_状況']||c['エントリー_状況']!=='提出済') return 'エントリー予定';
-  // 2. 提出物残り
+  // 2. 事前提出が必要な提出物が未提出 → 準備中
   var submPending=false;
-  if(c['音源_要否']&&c['音源_要否']!=='不要'&&c['音源_状況']!=='提出済') submPending=true;
+  if(c['音源_要否']==='事前'&&c['音源_状況']!=='提出済') submPending=true;
   if(c['動画_要否']&&c['動画_要否']!=='不要'&&c['動画_状況']!=='提出済') submPending=true;
   if(c['写真_要否']&&c['写真_要否']!=='不要'&&c['写真_状況']!=='提出済') submPending=true;
   if(submPending) return '準備中';
-  // 3. 未払いあり
+  // 日付計算
+  var cd=c['開催日']?new Date(c['開催日']):null;
+  var now=new Date(); now.setHours(0,0,0,0);
+  var afterContest=cd&&cd<now;
+  // 3. 未払い判定
   var efAmt=parseInt(c['エントリー費_金額'])||0;
-  var efMeth2=c['エントリー費_支払方法']||'';
   var adultP=parseInt(c['観覧費_大人_単価'])||0, childP=parseInt(c['観覧費_子供_単価'])||0;
   var tTotal=(parseInt(c['交通費_ガソリン代'])||0)+(parseInt(c['交通費_ETC'])||0);
-  var cd2=c['開催日']?new Date(c['開催日']):null; var now2=new Date(); now2.setHours(0,0,0,0);
-  var afterContest=cd2&&cd2<now2;
   var unpaid=false;
   S.fams.forEach(function(fam){
-    // 当日払いは大会後のみ未払いとしてカウント
-    if(efAmt>0&&!parseBool(c[fam+'_エントリー費_支払済'])&&(efMeth2!=='当日'||afterContest)) unpaid=true;
+    if(efAmt>0&&!parseBool(c[fam+'_エントリー費_支払済'])) unpaid=true;
     var ad=parseInt(c[fam+'_観覧費_大人'])||0, ch=parseInt(c[fam+'_観覧費_子供'])||0;
     var kanFree=(c['観覧費_支払方法']==='不要');
-    if(!kanFree&&(ad>0||ch>0)&&(adultP>0||childP>0)&&!parseBool(c[fam+'_観覧費_支払済'])) unpaid=true;
+    var freeOne=parseBool(c['観覧費_付き添い無料']);
+    var effAdAmt=ad>0?adultP*(freeOne?Math.max(0,ad-1):ad):0;
+    var effChAmt=ch>0?childP*ch:0;
+    if(!kanFree&&(effAdAmt>0||effChAmt>0)&&!parseBool(c[fam+'_観覧費_支払済'])) unpaid=true;
     if(tTotal>0&&parseBool(c[fam+'_交通費_対象'])&&!parseBool(c[fam+'_交通費_支払済'])) unpaid=true;
   });
-  if(unpaid) return '会計待ち';
+  // 4. 大会後かつ未払い → 会計待ち
+  if(afterContest&&unpaid) return '会計待ち';
+  // 5. 大会前で当日対応が残っている → 当日待ち
+  var dayOf=false;
+  if(c['音源_要否']==='当日CD') dayOf=true;
+  if(efAmt>0&&c['エントリー費_支払方法']==='当日') dayOf=true;
+  if(c['観覧費_支払方法']==='当日支払い') dayOf=true;
+  if(!afterContest&&dayOf) return '当日待ち';
+  // 6. 大会前で未払い（振込等）→ 準備中
+  if(!afterContest&&unpaid) return '準備中';
   return '完了';
 }
 
@@ -1732,7 +1751,7 @@ function renderContests() {
 
 function mkCard(c) {
   var autoStat=calcAutoStatus(c);
-  var bm={'エントリー予定':'b-entry','準備中':'b-ready','会計待ち':'b-waitpay','完了':'b-done','キャンセル':'b-cancel'};
+  var bm={'エントリー予定':'b-entry','準備中':'b-ready','当日待ち':'b-dayof','会計待ち':'b-waitpay','完了':'b-done','キャンセル':'b-cancel'};
   var bc=bm[autoStat]||'b-def';
   // 今後7日以内の大会はupcomingクラス
   var isUpcoming=false;
@@ -2301,7 +2320,7 @@ function buildViewContent(c) {
   }
 
   // 基本情報
-  var bm={'エントリー予定':'b-entry','準備中':'b-ready','会計待ち':'b-waitpay','完了':'b-done','キャンセル':'b-cancel'};
+  var bm={'エントリー予定':'b-entry','準備中':'b-ready','当日待ち':'b-dayof','会計待ち':'b-waitpay','完了':'b-done','キャンセル':'b-cancel'};
   var vStat=calcAutoStatus(c);
   html+='<div class="vs"><div class="vst" style="display:flex;justify-content:space-between;align-items:center">基本情報<span class="badge '+(bm[vStat]||'b-def')+'">'+esc(vStat)+'</span></div>';
   if(c['コンテスト名']) html+='<div class="vr"><span class="vr-l">大会名</span><span class="vr-v" style="font-weight:700">'+esc(c['コンテスト名'])+'</span></div>';
@@ -2856,14 +2875,30 @@ function renderResults() {
   var filtered=past.filter(function(c){ return !S.resYear||c['開催日'].substring(0,4)===S.resYear; });
   if(!filtered.length){ rlist.innerHTML='<div class="empty"><p>開催済みの大会はありません</p></div>'; return; }
   rlist.innerHTML=filtered.map(function(c){
-    return '<div class="rc"><div class="rc-h"><div class="rc-name">'+esc(c['コンテスト名'])+'</div><div class="rc-date">'+(c['開催日']?fmtD(c['開催日']):'')+'</div></div>'+
-      (c['部門']?'<div class="rc-div">'+esc(c['部門'])+'</div>':'')+
-      (function(){
-        var detail=c['結果_詳細']?esc(c['結果_詳細']):'';
-        var kind=c['結果']?esc(c['結果']):'';
-        var res=detail&&kind?detail+' '+kind:(detail||kind);
-        return res?'<div class="rc-res">'+res+'</div>':'<div class="rc-empty">結果未入力</div>';
-      })()+
+    var kind=c['結果']||'';
+    var detail=c['結果_詳細']||'';
+    var resHtml;
+    if(kind==='入賞'||kind==='特別賞'||kind==='審査員賞'||kind==='予選通過'){
+      var cls=kind==='入賞'?'award':kind==='予選通過'?'qualify':'special';
+      var icon=kind==='入賞'
+        ?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>'
+        :kind==='予選通過'
+        ?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        :'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+      var label=detail?esc(detail)+' '+esc(kind):esc(kind);
+      resHtml='<div class="rc-res '+cls+'">'+icon+label+'</div>';
+    } else if(kind){
+      resHtml='<div class="rc-res plain">'+esc(detail?detail+' ':'')+esc(kind)+'</div>';
+    } else if(detail){
+      resHtml='<div class="rc-res plain">'+esc(detail)+'</div>';
+    } else {
+      resHtml='<div class="rc-empty">結果未入力</div>';
+    }
+    return '<div class="rc">'+
+      '<div class="rc-date">'+(c['開催日']?(function(s){var d=new Date(s);var dw=['日','月','火','水','木','金','土'];return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日('+dw[d.getDay()]+')';})(c['開催日']):'')+'</div>'+
+      '<div class="rc-name">'+esc(c['コンテスト名'])+'</div>'+
+      (c['部門']?'<div class="rc-div">'+esc(c['部門'])+'</div>':'<div class="rc-div" style="margin-bottom:8px"></div>')+
+      resHtml+
       '</div>';
   }).join('');
 }
