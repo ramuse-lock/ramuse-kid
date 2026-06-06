@@ -1,8 +1,0 @@
-# GASには不要なファイル
-manifest.json
-*.png
-.DS_Store
-.gitignore
-.claspignore
-README*
-RAMUSE_logo*
