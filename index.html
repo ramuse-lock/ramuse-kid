@@ -1243,7 +1243,7 @@ function gasJsonp(url, onSuccess, onError) {
 window.onload = function() {
   // ① キャッシュがあれば即座に描画（初回以外はここで表示完了）
   try {
-    var cached = sessionStorage.getItem(CACHE_KEY);
+    var cached = sessionStorage.getItem(CACHE_KEY) || localStorage.getItem(CACHE_KEY);
     if (cached) {
       S.contests = JSON.parse(cached);
       renderContests(); renderProgress(); renderResults(); try{renderHome();}catch(e){}
@@ -1265,6 +1265,7 @@ window.onload = function() {
     if(data.families&&data.families.length) S.fams=data.families;
     S.contests = data.contests || [];
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
     try { renderContests(); } catch(e) { var el=document.getElementById('clist'); if(el) el.innerHTML='<div class="empty"><p>表示エラー: '+esc(String(e))+'</p></div>'; }
     try { renderProgress(); } catch(e) {}
     try { renderFinance(); } catch(e) {}
@@ -1284,6 +1285,7 @@ function loadAll(quiet) {
     if(data.families&&data.families.length) S.fams=data.families;
     S.contests = data.contests || [];
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(S.contests)); } catch(e) {}
     renderContests(); renderProgress(); renderResults(); try{renderHome();}catch(e){}
     try { renderTodayBanner(S.contests); } catch(e) {}
     if (quiet) showToast('更新しました');
