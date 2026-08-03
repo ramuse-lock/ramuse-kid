@@ -1771,6 +1771,7 @@ function mkCard(c) {
     meta+='<span class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(c['会場'])+'</span>';
   }
   if(c['部門']) meta+='<span class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'+esc(c['部門'])+'</span>';
+  if(c['大会シリーズ名']) meta+='<span class="mi">シリーズ: '+esc(c['大会シリーズ名'])+'</span>';
   var tp=[];
   if(c['集合時間']) tp.push('集合 '+c['集合時間']);
   if(c['開始時間']){ var tStr='開始 '+c['開始時間']; if(c['終了時間']) tStr+='〜'+c['終了時間']; tp.push(tStr); }
@@ -2402,8 +2403,9 @@ function buildViewContent(c) {
   }
 
   // 決勝大会情報
-  if(c['ラウンド']==='予選'&&(c['決勝_ステータス']||c['決勝_開催日']||c['決勝_場所']||c['決勝_会場'])) {
+  if(c['ラウンド']==='予選'&&(c['大会シリーズ名']||c['決勝_ステータス']||c['決勝_開催日']||c['決勝_場所']||c['決勝_会場'])) {
     html+='<div class="vs"><div class="vst">決勝大会情報</div>';
+    if(c['大会シリーズ名']) html+='<div class="vr"><span class="vr-l">大会シリーズ</span><span class="vr-v">'+esc(c['大会シリーズ名'])+'</span></div>';
     if(c['決勝_ステータス']) html+='<div class="vr"><span class="vr-l">決勝ステータス</span><span class="vr-v">'+esc(c['決勝_ステータス'])+'</span></div>';
     if(c['決勝_開催日']) html+='<div class="vr"><span class="vr-l">決勝開催日</span><span class="vr-v">'+fmtD(c['決勝_開催日'])+'</span></div>';
     if(c['決勝_開始時間']) html+='<div class="vr"><span class="vr-l">決勝時間</span><span class="vr-v">'+esc(c['決勝_開始時間']+(c['決勝_終了時間']?'〜'+c['決勝_終了時間']:''))+'</span></div>';
